@@ -5,7 +5,7 @@ const axios = require('axios');
 let chrome = {};
 let puppeteer;
 
-if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+if (process.env.IS_PRODUCTION) {
   chrome = require("chrome-aws-lambda");
   puppeteer = require("puppeteer-core");
 } else {
@@ -111,7 +111,7 @@ router.get('/tender', async (req, res) => {
     (async () => {
       let options = {};
 
-      if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+      if (process.env.IS_PRODUCTION) {
         options = {
           args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
           defaultViewport: chrome.defaultViewport,
