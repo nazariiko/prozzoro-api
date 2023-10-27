@@ -119,10 +119,6 @@ const procTypes = [
     id: 'closeFrameworkAgreementSelectionUA'
   },
   {
-    name: 'Спрощена',
-    id: 'belowThreshold'
-  },
-  {
     name: 'Запит (ціни) пропозицій',
     id: 'priceQuotation'
   },

@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
+const puppeteer = require('puppeteer');
 
-router.get('/tender', async (req, res) => {
+router.get('/tenders', async (req, res) => {
   const queries = req.query;
   const entries = Object.entries(queries);
   let path = 'https://prozorro.gov.ua/api/search/tenders?filterType=tenders'
@@ -92,5 +93,47 @@ router.get('/tender', async (req, res) => {
     res.status(500).json({ error: 'An error occurred while fetching data from the external API' });
   }
 });
+
+router.get('/tender', async (req, res) => {
+  const queries = req.query;
+  const tenderId = queries.id
+
+  try {
+    (async () => {
+      // Launch the browser
+      const browser = await puppeteer.launch();
+    
+      // Create a page
+      const page = await browser.newPage();
+    
+      // Go to your site
+      await page.goto(`https://prozorro.gov.ua/tender/${tenderId}`);
+    
+      // Query for an element handle.
+      const element = await page.waitForSelector('.tender--head--inf');
+      let value = await page.evaluate(el => el.textContent, element);
+      const temp = value.split(' ')
+      let findedIndex = 0;
+      temp.forEach((el, index) => {
+        if (el == tenderId) {
+          findedIndex = index 
+        }
+      })
+
+      let id2 = temp[findedIndex + 2]
+      id2.replace('\\n', '')   
+
+      await element.dispose();
+      await browser.close();
+
+      const response = await axios.get(`https://public.api.openprocurement.org/api/2.5/tenders/${id2}`);
+      const data = response.data;
+      res.json(data);
+    })()
+  } catch (error) {
+    console.error('Error while making the request:', error);
+    res.status(500).json({ error: 'An error occurred while fetching data from the external API' });
+  }
+})
 
 module.exports = router;
