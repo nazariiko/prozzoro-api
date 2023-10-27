@@ -1,16 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-
-let chrome = {};
-let puppeteer;
-
-if (process.env.IS_PRODUCTION) {
-  chrome = require("chrome-aws-lambda");
-  puppeteer = require("puppeteer-core");
-} else {
-  puppeteer = require("puppeteer");
-}
+const { JSDOM } = require('jsdom');
 
 router.get('/tenders', async (req, res) => {
   const queries = req.query;
@@ -108,45 +99,27 @@ router.get('/tender', async (req, res) => {
   const tenderId = queries.id
 
   try {
-    (async () => {
-      let options = {};
-
-      if (process.env.IS_PRODUCTION) {
-        options = {
-          args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
-          defaultViewport: chrome.defaultViewport,
-          executablePath: await chrome.executablePath,
-          headless: true,
-          ignoreHTTPSErrors: true,
-        };
+    const url = `https://prozorro.gov.ua/tender/${tenderId}`;
+    const response1 = await axios.get(url);
+    const { data } = response1;
+    const dom = new JSDOM(data);
+    const element = dom.window.document.querySelector('.tender--head--inf');
+    const value  = element.innerHTML
+    
+    const temp = value.split(' ')
+    let findedIndex = 0;
+    temp.forEach((el, index) => {
+      if (el == tenderId) {
+        findedIndex = index 
       }
+    })
 
-      const browser = await puppeteer.launch(options);
-    
-      const page = await browser.newPage();
-    
-      await page.goto(`https://prozorro.gov.ua/tender/${tenderId}`);
+    let id2 = temp[findedIndex + 3]
+    id2.replace('\\n', '')   
 
-      const element = await page.waitForSelector('.tender--head--inf');
-      let value = await page.evaluate(el => el.textContent, element);
-      const temp = value.split(' ')
-      let findedIndex = 0;
-      temp.forEach((el, index) => {
-        if (el == tenderId) {
-          findedIndex = index 
-        }
-      })
-
-      let id2 = temp[findedIndex + 2]
-      id2.replace('\\n', '')   
-
-      await element.dispose();
-      await browser.close();
-
-      const response = await axios.get(`https://public.api.openprocurement.org/api/2.5/tenders/${id2}`);
-      const data = response.data;
-      res.json(data);
-    })()
+    const response = await axios.get(`https://public.api.openprocurement.org/api/2.5/tenders/${id2}`);
+    const data2 = response.data;
+    res.json(data2);
   } catch (error) {
     console.error('Error while making the request:', error);
     res.status(500).json({ error: 'An error occurred while fetching data from the external API' });
