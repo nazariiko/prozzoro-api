@@ -1,7 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const puppeteer = require('puppeteer');
+
+let chrome = {};
+let puppeteer;
+
+if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+  chrome = require("chrome-aws-lambda");
+  puppeteer = require("puppeteer-core");
+} else {
+  puppeteer = require("puppeteer");
+}
 
 router.get('/tenders', async (req, res) => {
   const queries = req.query;
@@ -100,16 +109,24 @@ router.get('/tender', async (req, res) => {
 
   try {
     (async () => {
-      // Launch the browser
-      const browser = await puppeteer.launch();
+      let options = {};
+
+      if (process.env.AWS_LAMBDA_FUNCTION_VERSION) {
+        options = {
+          args: [...chrome.args, "--hide-scrollbars", "--disable-web-security"],
+          defaultViewport: chrome.defaultViewport,
+          executablePath: await chrome.executablePath,
+          headless: true,
+          ignoreHTTPSErrors: true,
+        };
+      }
+
+      const browser = await puppeteer.launch(options);
     
-      // Create a page
       const page = await browser.newPage();
     
-      // Go to your site
       await page.goto(`https://prozorro.gov.ua/tender/${tenderId}`);
-    
-      // Query for an element handle.
+
       const element = await page.waitForSelector('.tender--head--inf');
       let value = await page.evaluate(el => el.textContent, element);
       const temp = value.split(' ')
